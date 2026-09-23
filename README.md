@@ -50,7 +50,7 @@ or commas separate URLs.
 
 The Action fetches the URLs you supply, including private network addresses.
 Use trusted literal workflow inputs; do not pass URLs controlled by untrusted
-pull requests. Pin `@v1.0.0` (or a commit SHA) instead of `@v1` if your
+pull requests. Pin `@v1.0.1` (or a commit SHA) instead of `@v1` if your
 workflows require an immutable version.
 
 ## What it does not do

@@ -1,6 +1,6 @@
 {
   "name": "seo-guard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "GitHub Action: fail a deploy that introduces noindex, robots blocks, canonical regressions, or unexpected status codes.",
   "type": "module",
   "license": "MIT",

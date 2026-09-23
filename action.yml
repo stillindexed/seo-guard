@@ -1,8 +1,7 @@
 name: 'seo-guard'
 description: >-
-  Fails a deploy when it introduces the exact regressions stillindexed
-  monitors continuously: noindex (meta or X-Robots-Tag), robots.txt blocks,
-  canonical mismatches, and unexpected status codes.
+  Check critical URLs for noindex, robots.txt blocks, canonical mismatches,
+  and HTTP errors after deploy.
 runs:
   using: 'node24'
   main: 'dist/index.js'

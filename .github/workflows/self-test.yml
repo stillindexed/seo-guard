@@ -1,0 +1,165 @@
+name: self-test
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Test and build local Action
+        run: npm test && npm run build && git diff --exit-code -- dist/
+
+      - name: Start fixture server
+        run: |
+          node test/fixture-server.mjs > "$RUNNER_TEMP/seo-guard-fixture.log" 2>&1 &
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:8765/pass > /dev/null
+
+      - name: Check passing page
+        id: pass
+        uses: ./
+        with:
+          urls: http://127.0.0.1:8765/pass
+
+      - name: Check noindex page
+        id: noindex
+        continue-on-error: true
+        uses: ./
+        with:
+          urls: http://127.0.0.1:8765/noindex
+
+      - name: Check non-HTML noindex header
+        id: header
+        continue-on-error: true
+        uses: ./
+        with:
+          urls: http://127.0.0.1:8765/header-noindex
+
+      - name: Check missing page
+        id: missing
+        continue-on-error: true
+        uses: ./
+        with:
+          urls: http://127.0.0.1:8765/missing
+
+      - name: Assert Action results
+        env:
+          PASS_RESULT: ${{ steps.pass.outputs.results }}
+          PASS_FAILED: ${{ steps.pass.outputs.failed }}
+          PASS_OUTCOME: ${{ steps.pass.outcome }}
+          NOINDEX_RESULT: ${{ steps.noindex.outputs.results }}
+          NOINDEX_FAILED: ${{ steps.noindex.outputs.failed }}
+          NOINDEX_OUTCOME: ${{ steps.noindex.outcome }}
+          HEADER_RESULT: ${{ steps.header.outputs.results }}
+          HEADER_FAILED: ${{ steps.header.outputs.failed }}
+          HEADER_OUTCOME: ${{ steps.header.outcome }}
+          MISSING_RESULT: ${{ steps.missing.outputs.results }}
+          MISSING_FAILED: ${{ steps.missing.outputs.failed }}
+          MISSING_OUTCOME: ${{ steps.missing.outcome }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+
+          for (const [name, path, status, codes] of [
+            ['PASS', 'pass', 200, []],
+            ['NOINDEX', 'noindex', 200, ['noindex-meta']],
+            ['HEADER', 'header-noindex', 200, ['noindex-header']],
+            ['MISSING', 'missing', 404, ['status']],
+          ]) {
+            const expectedFailure = codes.length > 0;
+            assert.equal(process.env[`${name}_OUTCOME`], expectedFailure ? 'failure' : 'success', `${name} step outcome`);
+            assert.equal(process.env[`${name}_FAILED`], String(expectedFailure), `${name} failed output`);
+            const results = JSON.parse(process.env[`${name}_RESULT`]);
+            assert.equal(results.length, 1, `${name} result count`);
+            assert.equal(results[0].url, `http://127.0.0.1:8765/${path}`, `${name} URL`);
+            assert.equal(results[0].status, status, `${name} HTTP status`);
+            assert.equal(results[0].ok, !expectedFailure, `${name} verdict`);
+            assert.deepEqual(results[0].failures.map(({ code }) => code), codes, `${name} failure codes`);
+          }
+          NODE
+
+  published:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Start fixture server
+        run: |
+          node test/fixture-server.mjs > "$RUNNER_TEMP/seo-guard-fixture.log" 2>&1 &
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:8765/pass > /dev/null
+
+      - name: Check passing page
+        id: pass
+        uses: stillindexed/seo-guard@v1
+        with:
+          urls: http://127.0.0.1:8765/pass
+
+      - name: Check noindex page
+        id: noindex
+        continue-on-error: true
+        uses: stillindexed/seo-guard@v1
+        with:
+          urls: http://127.0.0.1:8765/noindex
+
+      - name: Check non-HTML noindex header
+        id: header
+        continue-on-error: true
+        uses: stillindexed/seo-guard@v1
+        with:
+          urls: http://127.0.0.1:8765/header-noindex
+
+      - name: Check missing page
+        id: missing
+        continue-on-error: true
+        uses: stillindexed/seo-guard@v1
+        with:
+          urls: http://127.0.0.1:8765/missing
+
+      - name: Assert Action results
+        env:
+          PASS_RESULT: ${{ steps.pass.outputs.results }}
+          PASS_FAILED: ${{ steps.pass.outputs.failed }}
+          PASS_OUTCOME: ${{ steps.pass.outcome }}
+          NOINDEX_RESULT: ${{ steps.noindex.outputs.results }}
+          NOINDEX_FAILED: ${{ steps.noindex.outputs.failed }}
+          NOINDEX_OUTCOME: ${{ steps.noindex.outcome }}
+          HEADER_RESULT: ${{ steps.header.outputs.results }}
+          HEADER_FAILED: ${{ steps.header.outputs.failed }}
+          HEADER_OUTCOME: ${{ steps.header.outcome }}
+          MISSING_RESULT: ${{ steps.missing.outputs.results }}
+          MISSING_FAILED: ${{ steps.missing.outputs.failed }}
+          MISSING_OUTCOME: ${{ steps.missing.outcome }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+
+          for (const [name, path, status, codes] of [
+            ['PASS', 'pass', 200, []],
+            ['NOINDEX', 'noindex', 200, ['noindex-meta']],
+            ['HEADER', 'header-noindex', 200, ['noindex-header']],
+            ['MISSING', 'missing', 404, ['status']],
+          ]) {
+            const expectedFailure = codes.length > 0;
+            assert.equal(process.env[`${name}_OUTCOME`], expectedFailure ? 'failure' : 'success', `${name} step outcome`);
+            assert.equal(process.env[`${name}_FAILED`], String(expectedFailure), `${name} failed output`);
+            const results = JSON.parse(process.env[`${name}_RESULT`]);
+            assert.equal(results.length, 1, `${name} result count`);
+            assert.equal(results[0].url, `http://127.0.0.1:8765/${path}`, `${name} URL`);
+            assert.equal(results[0].status, status, `${name} HTTP status`);
+            assert.equal(results[0].ok, !expectedFailure, `${name} verdict`);
+            assert.deepEqual(results[0].failures.map(({ code }) => code), codes, `${name} failure codes`);
+          }
+          NODE

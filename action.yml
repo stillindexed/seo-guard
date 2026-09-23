@@ -1,0 +1,47 @@
+name: 'seo-guard'
+description: >-
+  Fails a deploy when it introduces the exact regressions stillindexed
+  monitors continuously: noindex (meta or X-Robots-Tag), robots.txt blocks,
+  canonical mismatches, and unexpected status codes.
+runs:
+  using: 'node24'
+  main: 'dist/index.js'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  urls:
+    description: 'URLs to check, one per line or comma separated.'
+    required: true
+  fail-on:
+    description: >-
+      Comma-separated failure codes that fail the step: noindex (covers
+      noindex-meta and noindex-header), noindex-meta, noindex-header,
+      robots-block, canonical-mismatch, canonical-missing, status, redirect.
+    required: false
+    default: 'noindex,robots-block,canonical-mismatch,status'
+  expect-canonical-self:
+    description: 'Check that canonical points at the final URL; add canonical-missing to fail-on to require one.'
+    required: false
+    default: 'true'
+  user-agent:
+    description: 'User-Agent sent with every request.'
+    required: false
+    default: 'seo-guard/1 (+https://github.com/stillindexed/seo-guard)'
+  timeout:
+    description: 'Per-request timeout in seconds.'
+    required: false
+    default: '10'
+  warn-only:
+    description: 'Report failures as warnings and always exit 0.'
+    required: false
+    default: 'false'
+
+outputs:
+  results:
+    description: 'JSON array of per-URL check results.'
+  failed:
+    description: '"true" when at least one URL failed the enabled checks.'
+  summary:
+    description: 'Markdown table of results (also written to the step summary).'
